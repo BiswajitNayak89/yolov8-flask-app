@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, flash, redirect, Response
 from PIL import Image, UnidentifiedImageError
 from ultralytics import YOLO
 from collections import Counter
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -19,10 +20,19 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 # -----------------------------
 # Load YOLOv8 Model
 # -----------------------------
-model = YOLO('best.pt')  # Ensure this file is in your repo
+print("Loading YOLOv8 model...")
+model = YOLO('best.pt')  # Make sure best.pt is in your working directory
+print("Model loaded successfully.")
 
 # -----------------------------
-# Home Page: Upload Image
+# Home Page: Upload Image (GET)
+# -----------------------------
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html')
+
+# -----------------------------
+# Upload Image & Run Detection (POST)
 # -----------------------------
 @app.route('/', methods=['POST'])
 def upload_image():
@@ -32,10 +42,12 @@ def upload_image():
             flash("No file uploaded.")
             return redirect(request.url)
 
-        img_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        # Secure the filename to avoid issues
+        filename = secure_filename(file.filename)
+        img_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(img_path)
 
-        # Validate image
+        # Validate image file
         try:
             with Image.open(img_path) as img:
                 img.verify()
@@ -49,8 +61,8 @@ def upload_image():
         result = results[0]
         result_img = result.plot()
 
-        # Save annotated image
-        output_path = os.path.join(OUTPUT_FOLDER, file.filename)
+        # Save annotated image (make sure output format matches)
+        output_path = os.path.join(OUTPUT_FOLDER, filename)
         cv2.imwrite(output_path, result_img)
 
         # Count detected objects
@@ -63,9 +75,8 @@ def upload_image():
             uploaded_image=output_path,
             counts=count_dict
         )
-    
+
     except Exception as e:
-        # 👇 Print full error in terminal
         print(f"Error during detection: {e}")
         flash("An error occurred during detection.")
         return redirect(request.url)
@@ -83,16 +94,16 @@ def gen_frames():
         if not success:
             break
 
-        # YOLOv8 detection
+        # YOLOv8 detection on webcam frame
         results = model(frame)
         result_img = results[0].plot()
 
-        # Convert to byte stream
+        # Encode frame as JPEG byte stream
         _, buffer = cv2.imencode('.jpg', result_img)
-        frame = buffer.tobytes()
+        frame_bytes = buffer.tobytes()
 
         yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
     cap.release()
 
@@ -108,5 +119,5 @@ def webcam_feed():
 # Run the app (Render-compatible)
 # -----------------------------
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host='0.0.0.0', port=port, threaded=True)
