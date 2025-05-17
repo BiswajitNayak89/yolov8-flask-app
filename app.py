@@ -24,10 +24,6 @@ model = YOLO('best.pt')  # Ensure this file is in your repo
 # -----------------------------
 # Home Page: Upload Image
 # -----------------------------
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/', methods=['POST'])
 def upload_image():
     try:
@@ -69,6 +65,7 @@ def upload_image():
         )
     
     except Exception as e:
+        # 👇 Print full error in terminal
         print(f"Error during detection: {e}")
         flash("An error occurred during detection.")
         return redirect(request.url)
