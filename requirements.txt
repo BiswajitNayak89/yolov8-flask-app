@@ -5,4 +5,3 @@ opencv-python-headless
 numpy
 Pillow
 
-Cleaned up requirements.txt for Render deployment
