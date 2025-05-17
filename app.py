@@ -6,7 +6,7 @@ from ultralytics import YOLO
 from collections import Counter
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
+app.secret_key = 'your_secret_key'  # Replace with env var for production
 
 # -----------------------------
 # Folder Setup
@@ -19,56 +19,59 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 # -----------------------------
 # Load YOLOv8 Model
 # -----------------------------
-model = YOLO('best.pt')  # Ensure this file is in your repo
+model = YOLO('best.pt')  # Ensure model file is present
 
 # -----------------------------
-# Home Page: Upload Image
+# Home Route (Handles GET and POST)
 # -----------------------------
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    if request.method == 'POST':
+        file = request.files.get('file')
+        if not file or file.filename == '':
+            flash("No file uploaded.")
+            return redirect(request.url)
+
+        # Save uploaded file
+        img_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(img_path)
+
+        # Validate image
+        try:
+            with Image.open(img_path) as img:
+                img.verify()
+        except (UnidentifiedImageError, IOError):
+            os.remove(img_path)
+            flash("Invalid image file. Please upload a valid image.")
+            return redirect(request.url)
+
+        # Run YOLOv8 inference
+        results = model(img_path)
+        result = results[0]
+        result_img = result.plot()
+
+        # Save annotated image
+        output_path = os.path.join(OUTPUT_FOLDER, file.filename)
+        cv2.imwrite(output_path, result_img)
+
+        # Count detected objects
+        class_names = model.names
+        detected_classes = []
+        if result.boxes.cls is not None:
+            detected_classes = [class_names[int(cls)] for cls in result.boxes.cls]
+        count_dict = dict(Counter(detected_classes))
+
+        return render_template(
+            'index.html',
+            uploaded_image=output_path,
+            counts=count_dict
+        )
+
+    # GET method
     return render_template('index.html')
 
-@app.route('/', methods=['POST'])
-def upload_image():
-    file = request.files.get('file')
-    if not file or file.filename == '':
-        flash("No file uploaded.")
-        return redirect(request.url)
-
-    img_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(img_path)
-
-    # Validate image
-    try:
-        with Image.open(img_path) as img:
-            img.verify()
-    except (UnidentifiedImageError, IOError):
-        os.remove(img_path)
-        flash("Invalid image file. Please upload a valid image.")
-        return redirect(request.url)
-
-    # Run YOLOv8 inference
-    results = model(img_path)
-    result = results[0]
-    result_img = result.plot()
-
-    # Save annotated image
-    output_path = os.path.join(OUTPUT_FOLDER, file.filename)
-    cv2.imwrite(output_path, result_img)
-
-    # Count detected objects
-    class_names = model.names
-    detected_classes = [class_names[int(cls)] for cls in result.boxes.cls]
-    count_dict = dict(Counter(detected_classes))
-
-    return render_template(
-        'index.html',
-        uploaded_image=output_path,
-        counts=count_dict
-    )
-
 # -----------------------------
-# Webcam Detection (Live Feed)
+# Webcam Detection Feed
 # -----------------------------
 def gen_frames():
     cap = cv2.VideoCapture(0)
@@ -80,7 +83,7 @@ def gen_frames():
         if not success:
             break
 
-        # YOLOv8 detection
+        # Run detection
         results = model(frame)
         result_img = results[0].plot()
 
@@ -102,8 +105,8 @@ def webcam_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 # -----------------------------
-# Run the app (Render-compatible)
+# Run the App (Render-compatible)
 # -----------------------------
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=True)
