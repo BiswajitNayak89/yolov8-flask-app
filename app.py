@@ -21,65 +21,60 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 # Load YOLOv8 Model
 # -----------------------------
 print("Loading YOLOv8 model...")
-model = YOLO('best.pt')  # Make sure best.pt is in your working directory
+model = YOLO('best.pt')  # Ensure this file exists in your working directory
 print("Model loaded successfully.")
 
 # -----------------------------
-# Home Page: Upload Image (GET)
+# Home Page: Upload Image and Run Detection
 # -----------------------------
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
-
-# -----------------------------
-# Upload Image & Run Detection (POST)
-# -----------------------------
-@app.route('/', methods=['POST'])
-def upload_image():
-    try:
-        file = request.files.get('file')
-        if not file or file.filename == '':
-            flash("No file uploaded.")
-            return redirect(request.url)
-
-        # Secure the filename to avoid issues
-        filename = secure_filename(file.filename)
-        img_path = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(img_path)
-
-        # Validate image file
+    if request.method == 'POST':
         try:
-            with Image.open(img_path) as img:
-                img.verify()
-        except (UnidentifiedImageError, IOError):
-            os.remove(img_path)
-            flash("Invalid image file. Please upload a valid image.")
+            file = request.files.get('file')
+            if not file or file.filename == '':
+                flash("No file uploaded.")
+                return redirect(request.url)
+
+            filename = secure_filename(file.filename)
+            img_path = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(img_path)
+
+            # Validate image file
+            try:
+                with Image.open(img_path) as img:
+                    img.verify()
+            except (UnidentifiedImageError, IOError):
+                os.remove(img_path)
+                flash("Invalid image file. Please upload a valid image.")
+                return redirect(request.url)
+
+            # Run YOLOv8 inference
+            results = model(img_path)
+            result = results[0]
+            result_img = result.plot()
+
+            # Save annotated image
+            output_path = os.path.join(OUTPUT_FOLDER, filename)
+            cv2.imwrite(output_path, result_img)
+
+            # Count detected objects
+            class_names = model.names
+            detected_classes = [class_names[int(cls)] for cls in result.boxes.cls]
+            count_dict = dict(Counter(detected_classes))
+
+            return render_template(
+                'index.html',
+                uploaded_image=output_path,
+                counts=count_dict
+            )
+
+        except Exception as e:
+            print(f"Error during detection: {e}")
+            flash("An error occurred during detection.")
             return redirect(request.url)
 
-        # Run YOLOv8 inference
-        results = model(img_path)
-        result = results[0]
-        result_img = result.plot()
-
-        # Save annotated image (make sure output format matches)
-        output_path = os.path.join(OUTPUT_FOLDER, filename)
-        cv2.imwrite(output_path, result_img)
-
-        # Count detected objects
-        class_names = model.names
-        detected_classes = [class_names[int(cls)] for cls in result.boxes.cls]
-        count_dict = dict(Counter(detected_classes))
-
-        return render_template(
-            'index.html',
-            uploaded_image=output_path,
-            counts=count_dict
-        )
-
-    except Exception as e:
-        print(f"Error during detection: {e}")
-        flash("An error occurred during detection.")
-        return redirect(request.url)
+    return render_template('index.html')
 
 # -----------------------------
 # Webcam Detection (Live Feed)
@@ -94,11 +89,9 @@ def gen_frames():
         if not success:
             break
 
-        # YOLOv8 detection on webcam frame
         results = model(frame)
         result_img = results[0].plot()
 
-        # Encode frame as JPEG byte stream
         _, buffer = cv2.imencode('.jpg', result_img)
         frame_bytes = buffer.tobytes()
 
