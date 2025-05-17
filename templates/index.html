@@ -1,214 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>YOLOv8 Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <title>YOLOv8 Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            transition: background 0.3s, color 0.3s;
-            background: #f8f9fa;
-            color: #333;
-        }
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      transition: background 0.3s, color 0.3s;
+      background: #f8f9fa;
+      color: #333;
+    }
 
-        .dark-mode {
-            background: #121212 !important;
-            color: #eaeaea !important;
-        }
+    .dark-mode {
+      background: #121212 !important;
+      color: #eaeaea !important;
+    }
 
-        .sidebar {
-            min-height: 100vh;
-            background-color: #343a40;
-            color: white;
-        }
+    .sidebar {
+      min-height: 100vh;
+      background-color: #343a40;
+      color: white;
+    }
 
-        .sidebar a {
-            color: white;
-            text-decoration: none;
-            display: block;
-            padding: 15px;
-        }
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      display: block;
+      padding: 15px;
+    }
 
-        .sidebar a:hover {
-            background-color: #495057;
-        }
+    .sidebar a:hover,
+    .sidebar a.active {
+      background-color: #495057;
+    }
 
-        .content {
-            padding: 30px;
-        }
+    .content {
+      padding: 30px;
+    }
 
-        img, video {
-            max-width: 100%;
-            border-radius: 10px;
-            border: 2px solid #dee2e6;
-            margin-bottom: 20px;
-        }
+    img, video {
+      max-width: 100%;
+      border-radius: 10px;
+      border: 2px solid #dee2e6;
+      margin-bottom: 20px;
+    }
 
-        ul {
-            padding: 0;
-        }
+    ul {
+      padding: 0;
+    }
 
-        li {
-            list-style: none;
-            padding: 8px 12px;
-            margin: 4px;
-            background: #e0e7ff;
-            border-radius: 6px;
-        }
+    li {
+      list-style: none;
+      padding: 8px 12px;
+      margin: 4px;
+      background: #e0e7ff;
+      border-radius: 6px;
+    }
 
-        .dark-mode li {
-            background: #2c2c2c;
-        }
+    .dark-mode li {
+      background: #2c2c2c;
+    }
 
-        #chart-controls {
-            margin-top: 10px;
-        }
+    #chart-controls {
+      margin-top: 10px;
+    }
 
-        .btn-export {
-            margin-left: 10px;
-        }
-    </style>
+    .btn-export {
+      margin-left: 10px;
+    }
+  </style>
 </head>
 <body>
 
 <div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar -->
-        <nav class="col-md-2 d-none d-md-block sidebar">
-            <h4 class="text-center py-3">YOLOv8 App</h4>
-            <a href="/">Image Detection</a>
-            <a href="#webcam" onclick="startWebcam()">Live Webcam</a>
-            <a href="#" onclick="toggleDarkMode()">Toggle Theme</a>
-        </nav>
+  <div class="row">
+    <!-- Sidebar -->
+    <nav class="col-md-2 d-none d-md-block sidebar">
+      <h4 class="text-center py-3">YOLOv8 App</h4>
+      <a href="/" class="active">Image Detection</a>
+      <a href="/webcam">Live Webcam</a>
+      <a href="#" onclick="toggleDarkMode()">Toggle Theme</a>
+    </nav>
 
-        <!-- Main Content -->
-        <main class="col-md-10 ms-sm-auto content">
-            <h2 class="mb-4">Hazardous Object Detection</h2>
+    <!-- Main Content -->
+    <main class="col-md-10 ms-sm-auto content">
+      <h2 class="mb-4">Hazardous Object Detection</h2>
 
-            <form method="POST" enctype="multipart/form-data" class="mb-4">
-                <div class="input-group">
-                    <input type="file" name="file" class="form-control" required>
-                    <button type="submit" class="btn btn-primary">Detect</button>
-                </div>
-            </form>
+      <form method="POST" enctype="multipart/form-data" class="mb-4">
+        <div class="input-group">
+          <input type="file" name="file" class="form-control" required>
+          <button type="submit" class="btn btn-primary">Detect</button>
+        </div>
+      </form>
 
-            {% if uploaded_image %}
-                <h3>Detection Result:</h3>
-                <img src="{{ uploaded_image }}">
+      {% if uploaded_image %}
+        <h3>Detection Result:</h3>
+        <img src="{{ uploaded_image }}" alt="Detected image">
 
-                {% if counts %}
-                    <h4>Detected Object Counts</h4>
-                    <ul class="d-flex flex-wrap">
-                        {% for label, count in counts.items() %}
-                            <li><strong>{{ label }}</strong>: {{ count }}</li>
-                        {% endfor %}
-                    </ul>
+        {% if counts %}
+          <h4>Detected Object Counts</h4>
+          <ul class="d-flex flex-wrap">
+            {% for label, count in counts.items() %}
+              <li><strong>{{ label }}</strong>: {{ count }}</li>
+            {% endfor %}
+          </ul>
 
-                    <div id="chart-controls">
-                        <label>Chart Type:</label>
-                        <select id="chartType" class="form-select w-auto d-inline" onchange="updateChart()">
-                            <option value="pie">Pie Chart</option>
-                            <option value="line">Line Chart</option>
-                        </select>
-                        <button class="btn btn-success btn-export" onclick="downloadChart()">Download Chart</button>
-                        <button class="btn btn-outline-secondary btn-export" onclick="window.print()">Print Page</button>
-                    </div>
+          <div id="chart-controls">
+            <label>Chart Type:</label>
+            <select id="chartType" class="form-select w-auto d-inline" onchange="updateChart()">
+              <option value="pie">Pie Chart</option>
+              <option value="line">Line Chart</option>
+            </select>
+            <button class="btn btn-success btn-export" onclick="downloadChart()">Download Chart</button>
+            <button class="btn btn-outline-secondary btn-export" onclick="window.print()">Print Page</button>
+          </div>
 
-                    <canvas id="chartCanvas" class="mt-4"></canvas>
-                {% endif %}
-            {% endif %}
+          <canvas id="chartCanvas" class="mt-4"></canvas>
+        {% endif %}
+      {% endif %}
 
-            <!-- Live Webcam Section -->
-            <div id="webcam" class="mt-5">
-                <h3>Live Webcam Detection</h3>
-                <video id="video" width="720" height="560" autoplay muted></video>
-                <canvas id="overlay" width="720" height="560" style="display:none;"></canvas>
-                <p class="text-muted mt-2">* This demo shows webcam feed (YOLO detection logic must be added on backend).</p>
-            </div>
-        </main>
-    </div>
+      <!-- Webcam Detection -->
+      {% if request.path == '/webcam' %}
+        <div id="webcam" class="mt-5">
+          <h3>Live Webcam Detection</h3>
+          <img src="{{ url_for('webcam_feed') }}" id="video-stream" alt="Live webcam feed" />
+          <p class="text-muted mt-2">* YOLOv8 inference is applied on the live webcam stream.</p>
+        </div>
+      {% endif %}
+    </main>
+  </div>
 </div>
 
 <script>
-    const labels = {{ counts.keys() | list | tojson if counts else [] }};
-    const data = {{ counts.values() | list | tojson if counts else [] }};
-    let chartInstance;
+  const labels = {{ counts.keys() | list | tojson if counts else [] }};
+  const data = {{ counts.values() | list | tojson if counts else [] }};
+  let chartInstance;
 
-    function createChart(type) {
-        const ctx = document.getElementById('chartCanvas').getContext('2d');
-        const colors = labels.map((_, i) => `hsl(${i * 40}, 70%, 60%)`);
+  function createChart(type) {
+    const ctx = document.getElementById('chartCanvas').getContext('2d');
+    const colors = labels.map((_, i) => `hsl(${i * 40}, 70%, 60%)`);
 
-        const config = {
-            type: type,
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Detected Count',
-                    data: data,
-                    backgroundColor: type === 'pie' ? colors : 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    fill: false,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                plugins: {
-                    legend: {
-                        display: type !== 'line'
-                    }
-                },
-                scales: type === 'line' ? {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { precision: 0 }
-                    }
-                } : {}
-            }
-        };
-
-        if (chartInstance) chartInstance.destroy();
-        chartInstance = new Chart(ctx, config);
-    }
-
-    function updateChart() {
-        const selected = document.getElementById('chartType').value;
-        createChart(selected);
-    }
-
-    function downloadChart() {
-        const canvas = document.getElementById('chartCanvas');
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/png');
-        link.download = 'detection_chart.png';
-        link.click();
-    }
-
-    function toggleDarkMode() {
-        document.body.classList.toggle('dark-mode');
-    }
-
-    window.onload = () => {
-        if (labels.length > 0) createChart('pie');
+    const config = {
+      type: type,
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Detected Count',
+          data: data,
+          backgroundColor: type === 'pie' ? colors : 'rgba(54, 162, 235, 0.6)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          fill: false,
+          tension: 0.4
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            display: type !== 'line'
+          }
+        },
+        scales: type === 'line' ? {
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        } : {}
+      }
     };
 
-    function startWebcam() {
-        const video = document.getElementById('video');
-        if (navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(function (stream) {
-                    video.srcObject = stream;
-                })
-                .catch(function (error) {
-                    console.error("Webcam error:", error);
-                });
-        }
-    }
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, config);
+  }
+
+  function updateChart() {
+    const selected = document.getElementById('chartType').value;
+    createChart(selected);
+  }
+
+  function downloadChart() {
+    const canvas = document.getElementById('chartCanvas');
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = 'detection_chart.png';
+    link.click();
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+  }
+
+  window.onload = () => {
+    if (labels.length > 0) createChart('pie');
+  };
 </script>
 
 </body>
