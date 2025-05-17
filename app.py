@@ -108,5 +108,6 @@ def webcam_feed():
 # Run the App (Render-compatible)
 # -----------------------------
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Render provides this
+    app.run(host='0.0.0.0', port=port)
+
