@@ -19,7 +19,7 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 # -----------------------------
 # Load YOLOv8 Model
 # -----------------------------
-model = YOLO('best.pt')  # Update if needed
+model = YOLO('best.pt')  # Ensure this file is in your repo
 
 # -----------------------------
 # Home Page: Upload Image
@@ -93,16 +93,17 @@ def gen_frames():
 
     cap.release()
 
-# Page to view webcam feed
 @app.route('/webcam')
 def webcam_page():
     return render_template('webcam.html')
 
-# Video feed stream
 @app.route('/webcam_feed')
 def webcam_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 # -----------------------------
+# Run the app (Render-compatible)
+# -----------------------------
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
